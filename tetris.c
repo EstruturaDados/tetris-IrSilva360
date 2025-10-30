@@ -1,5 +1,5 @@
 // Autor: Iranildo Silva
-// ByteBros - Tetris Stack - Aventureiro
+// ByteBros - Tetris Stack - MESTRE
 
 #include <stdio.h> // Entrada e saída de dados (printf, scanf)
 #include <stdlib.h> // Funções utilitárias: rand, srand, system
@@ -48,6 +48,8 @@ int filaCheia(const Fila *f); // Verifica se a fila está cheia
 int filaVazia(const Fila *f); // Verifica se a fila está vazia
 int enqueue(Fila *f, Peca p); // Adiciona peça ao fim da fila
 int retirarDaFila(Fila *f, Peca *saida); // Remove peça da frente da fila
+void inserirNaFrente(Fila *f, Peca x); // Inseri os 3 itens da pilha na frente da fila
+int trocaMultipla(Fila *f, Pilha *p);// Executa a trocas multiplas entre a fila e a pilha
 void mostrarFila(const Fila *f); // Mostra todas as peças da fila
 
 // Pilha 
@@ -56,6 +58,7 @@ int pilhaCheia(const Pilha *p); // Verifica se pilha cheia
 int pilhaVazia(const Pilha *p); // Verifica se pilha vazia
 int pushPilha(Pilha *p, Peca item); // Empilha peça no topo
 int popPilha(Pilha *p, Peca *saida); // Desempilha peça do topo
+int trocarFrenteFilaTopoPilha(Fila *f, Pilha *p); // Empilha os 3 itens da fila na pilha
 void mostrarPilha(const Pilha *p); // Mostra todas as peças da pilha (Topo -> Base)
 
 // Utilitários 
@@ -64,6 +67,192 @@ void limpaTela(); // Limpa o terminal (portável)
 void limpaBufferEntrada(); // Limpa buffer do teclado
 void esperarEnter(); // Pausa aguardando ENTER
 void pausaSegundos(int segundos); // Pausa por segundos (portável)
+
+// Função Principal - Menu
+
+int main(void) {
+    // Configura idioma/acentuação
+    setlocale(LC_ALL, "pt_BR.UTF-8");
+#ifdef _WIN32
+    SetConsoleCP(CP_UTF8);          
+    SetConsoleOutputCP(CP_UTF8);    
+#endif
+
+    srand((unsigned) time(NULL)); // Inicializa gerador aleatório
+
+    // Estruturas principais
+    Fila filaPrincipal;
+    Pilha pilhaReserva;
+
+    // Inicializa fila e pilha
+    inicializarFila(&filaPrincipal);
+    inicializarPilha(&pilhaReserva);
+
+    int opcao;
+    do {
+        limpaTela();
+
+        // Exibe estado atual
+        printf("==========================================================\n");
+        printf("           ByteBros - Tetris Stack - MESTRE\n");
+        printf("==========================================================\n");
+        printf("Estatus Atual\n");
+        mostrarFila(&filaPrincipal);
+        mostrarPilha(&pilhaReserva);
+         printf("==========================================================\n");
+        // Menu de ações
+        printf("Opções:\n");
+        printf("1 - Jogar Peça da Frente da Fila\n");
+        printf("2 - Enviar Peça da Fila para Reservar (Pilha)\n");
+        printf("3 - Usar Peça da Reserva (Pilha)\n");
+        printf("4 - Trocar Peça da Frente da Fila com Topo da Pilha\n");
+        printf("5 - Trocar os 3 Primeiros da Fila com as 3 Peças da Pilha\n");
+        printf("0 - SAIR\n");
+        printf("==========================================================\n");
+        printf("Opção: ");
+
+        if (scanf("%d", &opcao) != 1) {
+            limpaBufferEntrada();
+            opcao = -1;
+        } else {
+            limpaBufferEntrada();
+        }
+
+        switch (opcao) {
+            case 1: { // Jogar peça
+                Peca p;
+                if (retirarDaFila(&filaPrincipal, &p)) {
+                    printf("\nPeça Jogada: [%c %d]\n\nEstatus Atual:\n", p.nome, p.id);
+                    enqueue(&filaPrincipal, gerarPeca()); // Repor fila
+                } else {
+                    printf("\nFila Vazia!\n\n");
+                }
+                mostrarFila(&filaPrincipal);
+                printf("\n");
+                esperarEnter();
+                break;
+            }
+
+            case 2: { // Reservar peça
+                if (pilhaCheia(&pilhaReserva)) {
+                    printf("\nPilha Cheia!\n\n");
+                } else {
+                    Peca p;
+                    if (retirarDaFila(&filaPrincipal, &p)) {
+                        pushPilha(&pilhaReserva, p);
+                        printf("\nPeça Reservada: [%c %d]\n\nEstatus Atual:\n", p.nome, p.id);
+                        enqueue(&filaPrincipal, gerarPeca()); // Repor fila
+                    } else {
+                        printf("\nFila Vazia!\n\n");
+                    }
+                }
+                mostrarPilha(&pilhaReserva);
+                printf("\n");
+                esperarEnter();
+                break;
+            }
+
+            case 3: { // Usar peça reservada
+                Peca p;
+                if (popPilha(&pilhaReserva, &p)) {
+                    printf("\nPeça Usada da Reserva: [%c %d]\n\nEstatus Atual:\n", p.nome, p.id);
+                    enqueue(&filaPrincipal, gerarPeca());
+                } else {
+                    printf("\nPilha Vazia!\n\n");
+                }
+                mostrarPilha(&pilhaReserva);
+                printf("\n");
+                esperarEnter();
+                break;
+            }
+
+            case 4: { // Usar trocar peça fila X pilha
+                if (!filaVazia(&filaPrincipal) && !pilhaVazia(&pilhaReserva)) {
+                    Peca pFila = filaPrincipal.itens[filaPrincipal.inicio];
+                    Peca pPilha = pilhaReserva.itens[pilhaReserva.topo];
+
+                    trocarFrenteFilaTopoPilha(&filaPrincipal, &pilhaReserva);
+
+                    printf("\nTroca realizada:\n");
+                    printf("Fila [%c %d] por Pilha [%c %d]\n\nEstatus Atual:\n", pFila.nome, pFila.id, pPilha.nome, pPilha.id);
+                } else {
+                    printf("\nNão foi Possível Trocar (VAZIA)!\n\n");
+                    
+                }
+                mostrarFila(&filaPrincipal);
+                mostrarPilha(&pilhaReserva); 
+                printf("\n");
+                esperarEnter();
+                break;
+            }
+
+            case 5: { // Trocar 3 primeiros da fila com 3 da pilha
+                if (filaPrincipal.total >= 3 && pilhaReserva.topo >= 2) {
+
+                    Peca filaTemp[3];
+                    Peca pilhaTemp[3];
+
+                    // Guarda o estado ANTES da troca
+                    for (int i = 0; i < 3; i++) {
+                        int idxFila = (filaPrincipal.inicio + i) % MAX_FILA;
+                        filaTemp[i] = filaPrincipal.itens[idxFila];
+                        pilhaTemp[i] = pilhaReserva.itens[pilhaReserva.topo - i];
+                    }
+
+                    // Executa a troca oficial
+                    if (trocaMultipla(&filaPrincipal, &pilhaReserva)) {
+
+                        printf("\nTroca Múltipla Realizada:\n\n");
+
+                        // Exibe o antes e depois
+                        for (int i = 0; i < 3; i++) {
+                            int idxFila = (filaPrincipal.inicio + i) % MAX_FILA;
+                            int idxPilha = pilhaReserva.topo - i;
+
+                            printf("Fila [%c %d] -> [%c %d]\n",
+                                filaTemp[i].nome, filaTemp[i].id,
+                                filaPrincipal.itens[idxFila].nome,
+                                filaPrincipal.itens[idxFila].id);
+
+                            printf("Pilha [%c %d] -> [%c %d]\n\n",
+                                pilhaTemp[i].nome, pilhaTemp[i].id,
+                                pilhaReserva.itens[idxPilha].nome,
+                                pilhaReserva.itens[idxPilha].id);
+                        }
+                    }
+
+                } else {
+                    printf("\nNão foi possível trocar! (Fila ou Pilha insuficientes)\n\n");
+                }
+
+                printf("Estatus Atual:\n");
+                mostrarFila(&filaPrincipal);
+                mostrarPilha(&pilhaReserva);
+                printf("\n");
+                esperarEnter();
+                break;
+            }
+
+            case 0:
+                printf("\nSaindo...\n");
+                pausaSegundos(2);
+                limpaTela();
+                break;
+
+            default:
+                printf("\nOpção inválida! Tente novamente!\n\n");
+                esperarEnter();
+                break;
+        
+        }
+            
+          
+     
+    } while (opcao != 0);
+
+    return 0;
+
+}
 
 // Implementação das Funções
 
@@ -117,17 +306,83 @@ int retirarDaFila(Fila *f, Peca *saida) {
     return 1;
 }
 
+// Troca a peça da frente da fila com o topo da pilha
+int trocarFrenteFilaTopoPilha(Fila *f, Pilha *p) {
+    if (filaVazia(f) || pilhaVazia(p)) return 0; // Falha se algum estiver vazio
+
+    Peca temp = f->itens[f->inicio];
+    f->itens[f->inicio] = p->itens[p->topo];
+    p->itens[p->topo] = temp;
+
+    return 1;
+}
+
+// Troca múltipla: 3 primeiros da fila com 3 da pilha
+int trocaMultipla(Fila *f, Pilha *p) {
+    if (f->total < 3 || p->topo < 2) return 0;
+
+    Peca tempFila[3];
+    Peca tempPilha[3];
+
+    // Retira 3 da fila e guarda em tempFila
+    for (int i = 0; i < 3; i++) {
+        if (!retirarDaFila(f, &tempFila[i])) {
+            for (int j = 0; j < i; j++) inserirNaFrente(f, tempFila[i - 1 - j]); // Em caso de erro restaura o que foi retirado
+            return 0;
+        }
+    }
+
+    // Retira 3 da pilha e guarda em tempPilha
+    for (int i = 0; i < 3; i++) {
+        if (!popPilha(p, &tempPilha[i])) {
+            for (int j = i - 1; j >= 0; j--) pushPilha(p, tempPilha[j]);// Restaura: empilha de volta os que já foram removidos da pilha
+            for (int j = 0; j < 3; j++) enqueue(f, tempFila[j]); // e também recoloca os da fila no final da fila
+            return 0;
+        }
+    }
+
+    // Os itens retirados da fila devem entrar na pilha preservando LIFO:
+    for (int i = 0; i < 3; i++) {
+        if (!pushPilha(p, tempFila[i])) {
+            // Tentativa de rollback se falhar (raro, pois verificamos capacidade antes)
+            // Não implementamos rollback completo aqui por simplicidade
+            return 0;
+        }
+    }
+
+    // Os itens devem entrar na Fila na ordem FIFO
+    for (int i = 2; i >= 0; i--) {
+        inserirNaFrente(f, tempPilha[i]);
+    }
+
+    return 1;
+}
+
+// Inseri os 3 itens da pilha na frente da fila
+void inserirNaFrente(Fila *f, Peca x) {
+    if (filaCheia(f)) return; // Evita inserir se a fila estiver cheia
+
+    // Decrementa inicio de forma circular
+    f->inicio = (f->inicio - 1 + MAX_FILA) % MAX_FILA;
+
+    // Coloca item na nova frente
+    f->itens[f->inicio] = x;
+
+    f->total++;
+}
+
 // Mostra todas as peças da fila
 void mostrarFila(const Fila *f) { 
-    printf("\nFila de Peças: ");
+    printf("Fila de Peças: ");
     if (filaVazia(f)) {
-        printf("(vazia)\n\n");
+
+        printf("(VAZIA)\n");
         return;
     }
     for (int i = 0, idx = f->inicio; i < f->total; i++, idx = (idx + 1) % MAX_FILA) {
         printf("[%c %d] ", f->itens[idx].nome, f->itens[idx].id);
     }
-    printf("\n\n");
+    printf("\n");
 }
 
 // Pilha 
@@ -165,13 +420,13 @@ int popPilha(Pilha *p, Peca *saida) {
 void mostrarPilha(const Pilha *p) {
     printf("Pilha de Reserva (Topo -> Base): ");
     if (pilhaVazia(p)) {
-        printf("(vazia)\n\n");
+        printf("(vazia)\n");
         return;
     }
     for (int i = p->topo; i >= 0; i--) {
         printf("[%c %d] ", p->itens[i].nome, p->itens[i].id);
     }
-    printf("\n\n");
+    printf("\n");
 }
 
 // Utilitários 
@@ -204,110 +459,4 @@ void pausaSegundos(int segundos) {
 #else
     sleep(segundos);        // UNIX/Linux sleep recebe segundos
 #endif
-}
-
-// Função Principal - Menu
-
-int main(void) {
-    // Configura idioma/acentuação
-    setlocale(LC_ALL, "pt_BR.UTF-8");
-#ifdef _WIN32
-    SetConsoleCP(CP_UTF8);          
-    SetConsoleOutputCP(CP_UTF8);    
-#endif
-
-    srand((unsigned) time(NULL)); // Inicializa gerador aleatório
-
-    // Estruturas principais
-    Fila filaPrincipal;
-    Pilha pilhaReserva;
-
-    // Inicializa fila e pilha
-    inicializarFila(&filaPrincipal);
-    inicializarPilha(&pilhaReserva);
-
-    int opcao;
-    do {
-        limpaTela();
-
-        // Exibe estado atual
-        printf("=========================================\n");
-        printf("  ByteBros - Tetris Stack - AVENTUREIRO\n");
-        printf("=========================================\n");
-        mostrarFila(&filaPrincipal);
-        mostrarPilha(&pilhaReserva);
-
-        // Menu de ações
-        printf("Opções:\n");
-        printf("1 - Jogar Peça\n");
-        printf("2 - Reservar Peça\n");
-        printf("3 - Usar Peça Reservada\n");
-        printf("0 - SAIR\n");
-       printf("=========================================\n");
-        printf("Opção: ");
-
-        if (scanf("%d", &opcao) != 1) {
-            limpaBufferEntrada();
-            opcao = -1;
-        } else {
-            limpaBufferEntrada();
-        }
-
-        switch (opcao) {
-            case 1: { // Jogar peça
-                Peca p;
-                if (retirarDaFila(&filaPrincipal, &p)) {
-                    printf("\nPeça Jogada: [%c %d]\n\n", p.nome, p.id);
-                    enqueue(&filaPrincipal, gerarPeca()); // Repor fila
-                } else {
-                    printf("\nFila Vazia!\n\n");
-                }
-                esperarEnter();
-                break;
-            }
-
-            case 2: { // Reservar peça
-                if (pilhaCheia(&pilhaReserva)) {
-                    printf("\nPilha Cheia!\n\n");
-                } else {
-                    Peca p;
-                    if (retirarDaFila(&filaPrincipal, &p)) {
-                        pushPilha(&pilhaReserva, p);
-                        printf("\nPeça Reservada: [%c %d]\n\n", p.nome, p.id);
-                        enqueue(&filaPrincipal, gerarPeca()); // Repor fila
-                    } else {
-                        printf("\nFila Vazia!\n\n");
-                    }
-                }
-                esperarEnter();
-                break;
-            }
-
-            case 3: { // Usar peça reservada
-                Peca p;
-                if (popPilha(&pilhaReserva, &p)) {
-                    printf("\nPeça Usada da Reserva: [%c %d]\n\n", p.nome, p.id);
-                    enqueue(&filaPrincipal, gerarPeca());
-                } else {
-                    printf("\nPilha Vazia!\n\n");
-                }
-                esperarEnter();
-                break;
-            }
-
-            case 0:
-                printf("\nSaindo...\n");
-                pausaSegundos(2);
-                limpaTela();
-                break;
-
-            default:
-                printf("\nOpção inválida! Tente Novamente!\n\n");
-                esperarEnter();
-                break;
-        }
-
-    } while (opcao != 0);
-
-    return 0;
 }
